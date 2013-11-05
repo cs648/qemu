@@ -203,7 +203,7 @@ static int cow_update_bitmap(BlockDriverState *bs, int64_t sector_num,
     bool first = true;
 
     while (nb_sectors) {
-        int ret;
+        int ret, set;
         uint8_t bitmap[BDRV_SECTOR_SIZE];
 
         bitnum &= BITS_PER_BITMAP_SECTOR - 1;
@@ -213,6 +213,13 @@ static int cow_update_bitmap(BlockDriverState *bs, int64_t sector_num,
         if (ret < 0) {
             return ret;
         }
+
+        /* Skip over any already set bits */
+        set = cow_find_streak(bitmap, 1, bitnum, sector_bits);
+        if (set == sector_bits) {
+            continue;
+        }
+        bitnum += set;
 
         if (first) {
             ret = bdrv_flush(bs->file);
